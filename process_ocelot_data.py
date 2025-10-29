@@ -3,7 +3,10 @@ import sys
 from pathlib import Path
 import pandas as pd
 from image_processing_methods import PROCESSING_METHODS
+from project_utils import save_results
+from image_processing_methods.connected_components import connected_components_analyze_results
 import cv2
+
 class OcelotDataProcessor:
     def __init__(self, data_root: str = "ocelot_testing_data"):
         self.data_root = Path(data_root)
@@ -52,10 +55,17 @@ class OcelotDataProcessor:
                 raise ValueError(f"Unknown processing method: {processing_method}")
             processing_func = PROCESSING_METHODS[processing_method]
 
+        results_list = []
         for image_path, annotation_path in pairs:
             annotations = self.load_annotations(annotation_path)
             if processing_func:
-                processing_func(image_path, annotations)
+                result = processing_func(image_path, annotations)
+                if result:
+                    results_list.append(result)
+
+        if processing_method == 'connected_components' and results_list:
+            save_results(results_list)
+            connected_components_analyze_results()
 
 def main():
     if len(sys.argv) < 3:

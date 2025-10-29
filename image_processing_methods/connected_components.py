@@ -1,52 +1,73 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+from pathlib import Path
+
+def connected_components_analyze_results(csv_path='results/component_comparison.csv'):
+    df = pd.read_csv(csv_path)
+    differences = df['difference']
+
+    stats = {
+        'mean': differences.mean(),
+        'std': differences.std(),
+        'min': differences.min(),
+        'max': differences.max(),
+        'median': differences.median()
+    }
+
+    print("\nResults Analysis:")
+    print(f"Mean difference: {stats['mean']:.2f}")
+    print(f"Std deviation: {stats['std']:.2f}")
+    print(f"Min difference: {stats['min']}")
+    print(f"Max difference: {stats['max']}")
+    print(f"Median difference: {stats['median']:.2f}")
+
+    return stats
 
 def process_connected_components(image_path, annotations: pd.DataFrame, image=None):
-    image = cv2.imread(str(image_path))
+    results_dir = Path('results')
+    results_dir.mkdir(exist_ok=True)
 
-    target_color_rgb = np.array([83, 59, 118])
-    target_color_bgr = target_color_rgb[::-1]
-    color_threshold = 50
+    image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
 
-    color_diff = np.linalg.norm(image - target_color_bgr, axis=2)
-    binary_img = (color_diff < color_threshold).astype('uint8')
+    intensity_threshold = 0.35 * 255
+    binary_img = (image < intensity_threshold).astype('uint8')
 
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_img)
 
-    min_area = 50
-    min_roundness = 0.3
-    max_roundness = 1.0
-
+    min_area = 100
     filtered_labels = np.zeros_like(labels)
     valid_label = 1
+
     for label in range(1, num_labels):
         area = stats[label, cv2.CC_STAT_AREA]
-        if area < min_area:
-            continue
-
-        component_mask = (labels == label).astype('uint8')
-        contours, _ = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours) == 0:
-            continue
-
-        contour = contours[0]
-        perimeter = cv2.arcLength(contour, True)
-        if perimeter == 0:
-            continue
-
-        roundness = (4 * np.pi * area) / (perimeter ** 2)
-
-        if min_roundness <= roundness <= max_roundness:
+        if min_area <= area:
             filtered_labels[labels == label] = valid_label
             valid_label += 1
 
-    print(f"Total components: {num_labels - 1}, After filtering: {valid_label - 1}")
-    plt.figure()
-    plt.title(image_path.name)
-    comment = f"Annotations: {annotations.shape[0]}"
-    print(comment)
-    plt.imshow(filtered_labels, cmap='gray')
-    plt.axis("off")
-    plt.show()
+    detected_count = valid_label - 1
+    actual_count = len(annotations)
+
+    print(f"Image: {image_path.name}, Detected: {detected_count}, Actual: {actual_count}")
+
+    output_path = results_dir / f"{image_path.stem}_1_result.png"
+    cv2.imwrite(str(output_path), filtered_labels)
+
+
+    original_color = cv2.imread(str(image_path))
+    overlay = original_color.copy()
+    mask = (filtered_labels > 0).astype('uint8') * 255
+    overlay[mask > 0] = [0, 0, 255]
+
+    overlay_path = results_dir / f"{image_path.stem}_2_overlay.png"
+    cv2.imwrite(str(overlay_path), overlay)
+
+    original_path = results_dir / f"{image_path.stem}_3_original.png"
+    cv2.imwrite(str(original_path), original_color)
+
+    return {
+        'image_name': image_path.name,
+        'detected_components': detected_count,
+        'actual_components': actual_count,
+        'difference': abs(detected_count - actual_count)
+    }
