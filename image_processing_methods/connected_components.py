@@ -22,6 +22,15 @@ def connected_components_analyze_results(csv_path='results/component_comparison.
     print(f"Max difference: {stats['max']}")
     print(f"Median difference: {stats['median']:.2f}")
 
+    stats_path = Path('results/component_statistics.txt')
+    with open(stats_path, 'w') as f:
+        f.write("Results Analysis:\n")
+        f.write(f"Mean difference: {stats['mean']:.2f}\n")
+        f.write(f"Std deviation: {stats['std']:.2f}\n")
+        f.write(f"Min difference: {stats['min']}\n")
+        f.write(f"Max difference: {stats['max']}\n")
+        f.write(f"Median difference: {stats['median']:.2f}\n")
+
     return stats
 
 def process_connected_components(image_path, annotations: pd.DataFrame, image=None):
