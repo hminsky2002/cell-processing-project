@@ -1,7 +1,10 @@
-from .connected_components import process_connected_components
+from .process_cell_binary import process_cell_binary
+from .process_tissue_binary import process_tissue_binary
+
 
 PROCESSING_METHODS = {
-    'connected_components': process_connected_components,
+    'cell_binary': process_cell_binary,
+    'tissue_binary': process_tissue_binary,
 }
 
-__all__ = ['PROCESSING_METHODS', 'process_connected_components']
+__all__ = ['PROCESSING_METHODS', 'process_cell_binary', 'process_tissue_binary']

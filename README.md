@@ -33,4 +33,5 @@ where <folder> is one of 'test', 'train', or 'val', and <type> is one of 'cell' 
 
 
 # Current Techniques Used
-1. `connected_components`: uses Thresholding and the opencv function `connectedComponents` to identify connected components in the image.
+1. `cell_binary`: uses Thresholding and the opencv function for identifying cells in the image.
+2. `tissue_binary`: uses Thresholding and the opencv function for identifying tissue in the image.

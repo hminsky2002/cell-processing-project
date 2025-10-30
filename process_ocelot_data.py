@@ -3,8 +3,7 @@ import sys
 from pathlib import Path
 import pandas as pd
 from image_processing_methods import PROCESSING_METHODS
-from project_utils import save_results
-from image_processing_methods.connected_components import connected_components_analyze_results
+from project_utils import save_cell_results, analyze_cell_results
 import cv2
 
 class OcelotDataProcessor:
@@ -32,17 +31,28 @@ class OcelotDataProcessor:
 
         image_files = sorted(images_path.glob("*.jpg"))
         pairs = []
-        for image_path in image_files:
-            annotation_file = annotations_path / f"{image_path.stem}.csv"
-            if annotation_file.exists():
-                pairs.append((image_path, annotation_file))
+
+        if data_type == 'cell':
+            for image_path in image_files:
+                annotation_file = annotations_path / f"{image_path.stem}.csv"
+                if annotation_file.exists():
+                    pairs.append((image_path, annotation_file))
+        elif data_type == 'tissue':
+            for image_path in image_files:
+                annotation_file = annotations_path / f"{image_path.stem}.png"
+                if annotation_file.exists():
+                    pairs.append((image_path, annotation_file))
+
         return pairs
 
-    def load_annotations(self, annotation_path: Path):
-        try:
-            return pd.read_csv(annotation_path, header=None, names=['x', 'y', 'class'])
-        except pd.errors.EmptyDataError:
-            return pd.DataFrame(columns=['x', 'y', 'class'])
+    def load_annotations(self, annotation_path: Path, data_type: str):
+        if data_type == 'cell':
+            try:
+                return pd.read_csv(annotation_path, header=None, names=['x', 'y', 'class'])
+            except pd.errors.EmptyDataError:
+                return pd.DataFrame(columns=['x', 'y', 'class'])
+        elif data_type == 'tissue':
+            return cv2.imread(str(annotation_path), cv2.IMREAD_GRAYSCALE)
 
     def process_dataset(self, folder: str, data_type: str, image_limit: int = None, processing_method: str = None):
         pairs = self.get_image_annotation_pairs(folder, data_type)
@@ -54,18 +64,21 @@ class OcelotDataProcessor:
             if processing_method not in PROCESSING_METHODS:
                 raise ValueError(f"Unknown processing method: {processing_method}")
             processing_func = PROCESSING_METHODS[processing_method]
-
+            
         results_list = []
         for image_path, annotation_path in pairs:
-            annotations = self.load_annotations(annotation_path)
+            annotations = self.load_annotations(annotation_path, data_type)
+            
             if processing_func:
+                
                 result = processing_func(image_path, annotations)
+                
                 if result:
                     results_list.append(result)
 
-        if processing_method == 'connected_components' and results_list:
-            save_results(results_list)
-            connected_components_analyze_results()
+        if processing_method == 'cell_binary' and results_list:
+            output_path = save_cell_results(results_list)
+            analyze_cell_results(output_path)   
 
 def main():
     if len(sys.argv) < 3:
