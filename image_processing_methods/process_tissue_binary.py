@@ -36,7 +36,7 @@ def process_tissue_binary(image_path, annotations, image=None):
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(tissue, connectivity=8)
     h, w = tissue.shape[:2]
     min_area = int(0.0005 * (h * w))
-    
+
     filtered_labels = np.zeros_like(labels)
     valid_label = 1
 

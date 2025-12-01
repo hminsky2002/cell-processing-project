@@ -28,7 +28,7 @@ Again, the driving code is in process_ocelot_data.py. You can run it by running:
 python process_ocelot_data.py <folder> <type> [--image-limit N] [--method METHOD]
 ```
 
-where <folder> is one of 'test', 'train', or 'val', and <type> is one of 'cell' or 'tissue'. The --image-limit flag is optional and specifies the number of images to process. The --method flag is optional and specifies the method to use for processing the images.
+where `folder` is one of 'test', 'train', or 'val', and `type` is one of 'cell' or 'tissue'. The --image-limit flag is optional and specifies the number of images to process. The --method flag is optional and specifies the method to use for processing the images.
 
 
 

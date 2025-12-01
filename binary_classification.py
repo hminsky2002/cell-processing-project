@@ -31,7 +31,7 @@ def disk_kernel(radius: int) -> np.ndarray:
     return k.astype(np.uint8)
 
 
-# Tissue = 0 (black), non-tissue = 1 (white)
+
 def segment_tissue_binary(
     img_bgr: np.ndarray,
     min_component_area_ratio: float = 0.0005,
@@ -46,15 +46,15 @@ def segment_tissue_binary(
 
     _, tissue = cv2.threshold(S_blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    # bright and very low-S
+    
     bright_lowS_bg = cv2.inRange(S, 0, 20) & cv2.inRange(V, 200, 255)
     tissue[bright_lowS_bg > 0] = 0
 
-    # local neighborhood iteration
+    
     tissue = cv2.morphologyEx(tissue, cv2.MORPH_OPEN, disk_kernel(open_radius))
     tissue = cv2.morphologyEx(tissue, cv2.MORPH_CLOSE, disk_kernel(close_radius))
 
-    # Connected components -> remove tiny bits
+    
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(tissue, connectivity=8)
     h, w = tissue.shape[:2]
     min_area = int(min_component_area_ratio * (h * w))
