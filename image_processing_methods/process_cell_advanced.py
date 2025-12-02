@@ -31,84 +31,64 @@ DEFAULT_TUNING_PARAMS = {
     'adaptive_C': 8,                      # Constant subtracted from mean
 
     # === Connected components filtering ===
-    # UPDATED: Balanced shape filtering - not too strict, not too loose
-    'aspect_ratio_max': 4.0,              # Max elongation (balanced between 3.0 and 6.0)
-    'compactness_min': 0.35,              # Min fill ratio (balanced between 0.3 and 0.4)
+    'aspect_ratio_max': 6.0,              # Max elongation (HIGHER = accept more shapes)
+    'compactness_min': 0.3,               # Min fill ratio (LOWER = accept irregular shapes)
 
     # === Blob detection (supplementary method) ===
     'blob_detector_enabled': True,        # Enable/disable blob detector
-    'blob_min_circularity': 0.12,         # Slightly relaxed for varied cell shapes
-    'blob_min_convexity': 0.12,           # Slightly relaxed
-    'blob_min_inertia': 0.12,             # Slightly relaxed
+    'blob_min_circularity': 0.1,         # LOWER = accept less circular blobs
+    'blob_min_convexity': 0.1,           # LOWER = accept less convex blobs
+    'blob_min_inertia': 0.1,             # LOWER = accept more varied shapes
     'blob_merge_distance': 10,            # Min distance between blob and existing detection
 }
 
 
-# =============================================================================
-# ORGAN-SPECIFIC HSV PARAMETERS
-# =============================================================================
-# UPDATED based on analyze_cell_colors.py output
-# Key changes:
-#   - Widened H/S lower bounds to catch more cells (reduce FN)
-#   - Lowered V upper bounds to exclude light pink stroma (reduce FP)
-#   - Raised S lower bounds slightly to exclude desaturated stroma
-#
 ORGAN_PARAMS = {
     'bladder': {
-        # Analysis: H=143.5±8.8, S=134.3±31.0, V=109.8±38.6
-        'hsv_lower': np.array([125, 70, 30]),
-        'hsv_upper': np.array([162, 200, 165]),  # V upper limited to exclude light stroma
+        'hsv_lower': np.array([130, 90, 50]),
+        'hsv_upper': np.array([157, 180, 170]),
         'min_area': 200,
         'max_area': 2000,
         'cell_size_range': (10, 40),
     },
     'endometrium': {
-        # Analysis: H=151.2±11.9, S=121.2±36.2, V=135.9±44.1
-        'hsv_lower': np.array([127, 50, 45]),
-        'hsv_upper': np.array([175, 195, 190]),  # V upper limited
+        'hsv_lower': np.array([133, 70, 70]),
+        'hsv_upper': np.array([169, 175, 200]),
         'min_area': 200,
         'max_area': 2000,
         'cell_size_range': (10, 40),
     },
     'head-and-neck': {
-        # Analysis: H=142.7±14.6, S=132.9±45.1, V=132.6±45.4
-        'hsv_lower': np.array([113, 45, 40]),
-        'hsv_upper': np.array([172, 225, 190]),  # V upper limited
+        'hsv_lower': np.array([120, 70, 65]),
+        'hsv_upper': np.array([165, 200, 200]),
         'min_area': 200,
         'max_area': 2000,
         'cell_size_range': (10, 40),
     },
     'kidney': {
-        # Analysis: H=144.6±10.1, S=122.2±32.0, V=112.8±41.1
-        'hsv_lower': np.array([124, 60, 30]),
-        'hsv_upper': np.array([165, 190, 165]),  # V upper limited
+        'hsv_lower': np.array([130, 75, 50]),
+        'hsv_upper': np.array([160, 170, 175]),
         'min_area': 200,
         'max_area': 2000,
         'cell_size_range': (10, 40),
     },
     'prostate': {
-        # Analysis: H=140.3±11.9, S=88.7±36.1, V=151.8±42.1
-        # Note: prostate has lower saturation and higher brightness than other organs
-        # Widened V range to catch more cells
-        'hsv_lower': np.array([116, 15, 50]),   # V floor lowered from 65 → 50
-        'hsv_upper': np.array([164, 170, 215]), # S upper 165→170, V upper 200→215
+        'hsv_lower': np.array([122, 40, 90]),
+        'hsv_upper': np.array([158, 140, 215]),
         'min_area': 200,
         'max_area': 2000,
         'cell_size_range': (10, 40),
     },
     'stomach': {
-        # Analysis: H=142.9±10.1, S=95.7±36.7, V=144.8±42.2
-        'hsv_lower': np.array([122, 25, 60]),
-        'hsv_upper': np.array([164, 170, 195]),  # V upper limited
+        'hsv_lower': np.array([128, 45, 85]),
+        'hsv_upper': np.array([158, 150, 210]),
         'min_area': 200,
         'max_area': 2000,
         'cell_size_range': (10, 40),
     },
     'default': {
-        # Conservative defaults that work across organs
-        # Wide H range to catch all purples, moderate S/V filtering
-        'hsv_lower': np.array([113, 20, 30]),
-        'hsv_upper': np.array([175, 225, 190]),  # V upper limited to exclude light pink
+        'hsv_lower': np.array([125, 60, 60]),
+        'hsv_upper': np.array([160, 180, 200]),
         'min_area': 200,
         'max_area': 2000,
         'cell_size_range': (10, 40),
@@ -158,7 +138,7 @@ def detect_cells_multi_stage(image_bgr, params, tuning_params=None):
        - Try True if combined mask is eliminating real cells
 
     **TIER 2 - MEDIUM IMPACT:**
-    3. blob_min_circularity/convexity/inertia (0.0-1.0, defaults: 0.15)
+    3. blob_min_circularity/convexity/inertia (0.0-1.0, defaults: 0.1)
        - Controls blob detector sensitivity
        - LOWER = Accept more varied shapes
        - Affects supplementary detections only
@@ -167,7 +147,7 @@ def detect_cells_multi_stage(image_bgr, params, tuning_params=None):
        - Max elongation of detected components
        - HIGHER = Accept more elongated cells
 
-    5. compactness_min (0.0-1.0, default: 0.4)
+    5. compactness_min (0.0-1.0, default: 0.3)
        - Min fill ratio of bounding box
        - LOWER = Accept more irregular shapes
 

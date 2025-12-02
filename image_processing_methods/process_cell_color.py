@@ -10,43 +10,43 @@ ORGAN_COLOR_RANGES = {
     'bladder': {
         'hsv_lower': np.array([130, 90, 50]),
         'hsv_upper': np.array([157, 180, 170]),
-        'min_area': 300,
+        'min_area': 200,
         'max_area': 2000,
     },
     'endometrium': {
         'hsv_lower': np.array([133, 70, 70]),
         'hsv_upper': np.array([169, 175, 200]),
-        'min_area': 300,
+        'min_area': 200,
         'max_area': 2000,
     },
     'head-and-neck': {
         'hsv_lower': np.array([120, 70, 65]),
         'hsv_upper': np.array([165, 200, 200]),
-        'min_area': 300,
+        'min_area': 200,
         'max_area': 2000,
     },
     'kidney': {
         'hsv_lower': np.array([130, 75, 50]),
         'hsv_upper': np.array([160, 170, 175]),
-        'min_area': 300,
+        'min_area': 200,
         'max_area': 2000,
     },
     'prostate': {
         'hsv_lower': np.array([122, 40, 90]),
         'hsv_upper': np.array([158, 140, 215]),
-        'min_area': 300,
+        'min_area': 200,
         'max_area': 2000,
     },
     'stomach': {
         'hsv_lower': np.array([128, 45, 85]),
         'hsv_upper': np.array([158, 150, 210]),
-        'min_area': 300,
+        'min_area': 200,
         'max_area': 2000,
     },
     'default': {
         'hsv_lower': np.array([125, 60, 60]),
         'hsv_upper': np.array([160, 180, 200]),
-        'min_area': 300,
+        'min_area': 200,
         'max_area': 2000,
     }
 }
