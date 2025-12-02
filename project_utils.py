@@ -5,17 +5,6 @@ from pathlib import Path
 
 
 def calculate_detection_metrics(detected_centroids, ground_truth_annotations, distance_threshold=100):
-    """
-    Calculate detection accuracy metrics by matching detected centroids to ground truth.
-
-    Args:
-        detected_centroids: List of detected cell centroids [(x, y), ...]
-        ground_truth_annotations: DataFrame with 'x' and 'y' columns for ground truth positions
-        distance_threshold: Maximum distance in pixels for a detection to be considered a match
-
-    Returns:
-        Dictionary with detection metrics including TP, FP, FN, precision, recall, F1, accuracy
-    """
     if len(ground_truth_annotations) == 0:
         return {
             'true_positives': 0,
@@ -93,21 +82,12 @@ def calculate_detection_metrics(detected_centroids, ground_truth_annotations, di
 
 
 def generate_accuracy_mosaics(df, method_name, results_dir='results'):
-    """
-    Generate 3x3 mosaic images for each accuracy quartile.
-
-    Args:
-        df: DataFrame with detection results including 'image_name' and 'accuracy' columns
-        method_name: Name of the detection method (e.g., 'cell_binary', 'cell_advanced')
-        results_dir: Directory containing overlay images
-    """
     results_path = Path(results_dir)
 
     if 'accuracy' not in df.columns or len(df) == 0:
         print("Cannot generate mosaics: 'accuracy' column missing or no data")
         return
 
-    # Filter out images with accuracy > 95% or < 10%
     df_filtered = df[(df['accuracy'] >= 0.10) & (df['accuracy'] <= 0.95)].copy()
 
     if len(df_filtered) == 0:
@@ -116,10 +96,8 @@ def generate_accuracy_mosaics(df, method_name, results_dir='results'):
 
     print(f"Generating mosaics from {len(df_filtered)} images (filtered from {len(df)} total, excluding <10% and >95% accuracy)")
 
-    # Sort by accuracy and divide into quartiles
     df_sorted = df_filtered.sort_values('accuracy', ascending=False).reset_index(drop=True)
 
-    # Define quartiles (note: indices work from sorted high to low)
     quartiles = {
         'q4_best': (0.0, 0.25, 'Best (Top 25%)'),
         'q3_good': (0.25, 0.50, 'Good (50-75%)'),
@@ -128,7 +106,6 @@ def generate_accuracy_mosaics(df, method_name, results_dir='results'):
     }
 
     for quartile_name, (lower, upper, label) in quartiles.items():
-        # Get images in this quartile range
         lower_idx = int(len(df_sorted) * lower)
         upper_idx = int(len(df_sorted) * upper)
 
@@ -137,21 +114,17 @@ def generate_accuracy_mosaics(df, method_name, results_dir='results'):
 
         quartile_df = df_sorted.iloc[lower_idx:upper_idx]
 
-        # Select up to 4 images (2x2 grid)
         sample_size = min(4, len(quartile_df))
         if sample_size == 0:
             continue
 
-        # Sample evenly from the quartile
         indices = np.linspace(0, len(quartile_df) - 1, sample_size, dtype=int)
         sampled_images = quartile_df.iloc[indices]
 
-        # Load overlay images
         images = []
         for _, row in sampled_images.iterrows():
             image_stem = Path(row['image_name']).stem
 
-            # Try different overlay naming patterns based on method
             overlay_patterns = [
                 f"{image_stem}_{method_name}_*_overlay.png",
                 f"{image_stem}_cell_*_overlay.png",
@@ -174,38 +147,22 @@ def generate_accuracy_mosaics(df, method_name, results_dir='results'):
             print(f"No overlay images found for {quartile_name}")
             continue
 
-        # Create mosaic
         mosaic = create_mosaic_grid(images, grid_size=2, tile_size=512)
 
-        # Add title
         title_height = 60
         mosaic_with_title = np.ones((mosaic.shape[0] + title_height, mosaic.shape[1], 3), dtype=np.uint8) * 255
         mosaic_with_title[title_height:, :] = mosaic
 
-        # Add title text
         title_text = f"{method_name.upper()} - {label}"
         cv2.putText(mosaic_with_title, title_text, (20, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 2)
 
-        # Save mosaic
         output_path = results_path / f"{method_name}_mosaic_{quartile_name}.png"
         cv2.imwrite(str(output_path), mosaic_with_title)
         print(f"  Saved mosaic: {output_path.name}")
 
 
 def create_mosaic_grid(images, grid_size=3, tile_size=512):
-    """
-    Create a grid mosaic from a list of images.
-
-    Args:
-        images: List of tuples (image, accuracy, name)
-        grid_size: Size of the grid (grid_size x grid_size)
-        tile_size: Size of each tile in pixels
-
-    Returns:
-        Mosaic image as numpy array
-    """
-    # Create blank mosaic
     mosaic = np.ones((grid_size * tile_size, grid_size * tile_size, 3), dtype=np.uint8) * 240
 
     for idx, (img, accuracy, name) in enumerate(images):
@@ -215,10 +172,8 @@ def create_mosaic_grid(images, grid_size=3, tile_size=512):
         row = idx // grid_size
         col = idx % grid_size
 
-        # Resize image to tile size
         resized = cv2.resize(img, (tile_size, tile_size))
 
-        # Add accuracy text overlay
         label_bg_height = 35
         cv2.rectangle(resized, (0, 0), (tile_size, label_bg_height), (0, 0, 0), -1)
 
@@ -227,7 +182,6 @@ def create_mosaic_grid(images, grid_size=3, tile_size=512):
         cv2.putText(resized, text, (5, 23),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, accuracy_color, 2)
 
-        # Place in mosaic
         y_start = row * tile_size
         y_end = (row + 1) * tile_size
         x_start = col * tile_size
@@ -248,11 +202,9 @@ def save_cell_results(results_list, output_path='results/component_comparison.cs
 def analyze_cell_results(csv_path: str):
     df = pd.read_csv(csv_path)
 
-    # Extract method name from csv path (e.g., "cell_binary_comparison.csv" -> "cell_binary")
     csv_filename = csv_path.split("/")[-1]
     method_name = csv_filename.replace("_comparison.csv", "")
 
-    # Create method-specific stats folder
     stats_dir = Path('results') / method_name / 'stats'
     stats_dir.mkdir(parents=True, exist_ok=True)
 
@@ -305,10 +257,8 @@ def analyze_cell_results(csv_path: str):
 
     print(f"Analysis saved to: {stats_path}")
 
-    # Generate accuracy mosaics if we have accuracy data
     if 'accuracy' in df.columns and len(df) >= 4:
         print(f"\nGenerating accuracy quartile mosaics for {method_name}...")
-        # Pass method-specific results directory for mosaics
         method_results_dir = Path('results') / method_name
         generate_accuracy_mosaics(df, method_name, results_dir=str(method_results_dir))
     elif 'accuracy' in df.columns:

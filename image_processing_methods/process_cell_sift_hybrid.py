@@ -11,24 +11,15 @@ from .process_cell_advanced import (
     detect_cells_multi_stage,
 )
 
-# =============================================================================
-# SIFT PARAMETERS (HYBRID MODE)
-# =============================================================================
-
 SIFT_PARAMS = {
-    "min_size": 20.0,          # acceptable SIFT keypoint scale range (pixels)
+    "min_size": 20.0,
     "max_size": 30.0,
-    "min_response": 0.02,     # lower => more keypoints (but noisier)
-    "merge_distance": 12.0,   # pixels; ignore SIFT points near existing detections
+    "min_response": 0.02,
+    "merge_distance": 12.0,
 }
 
 
 def _create_sift_detector():
-    """
-    Try both OpenCV SIFT APIs:
-    - cv2.SIFT_create (modern OpenCV)
-    - cv2.xfeatures2d.SIFT_create (older contrib builds)
-    """
     try:
         return cv2.SIFT_create()
     except AttributeError:
@@ -41,22 +32,8 @@ def _create_sift_detector():
 
 
 def _add_sift_on_color_mask(image_bgr, color_mask, base_centroids):
-    """
-    Run SIFT inside the organ-specific color mask and add new detections
-    that are not too close to the existing advanced centroids.
-
-    Args:
-        image_bgr: original BGR image
-        color_mask: uint8 mask (0/255) from advanced pipeline
-        base_centroids: list/array of existing centroids from advanced detection
-
-    Returns:
-        final_centroids: list of np.array([x, y]) including advanced + SIFT
-        sift_keypoints: list of cv2.KeyPoint (filtered, in-mask)
-    """
     gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
 
-    # Restrict SIFT to tissue-colored areas only
     masked_gray = cv2.bitwise_and(gray, gray, mask=color_mask)
 
     sift = _create_sift_detector()
@@ -67,7 +44,6 @@ def _add_sift_on_color_mask(image_bgr, color_mask, base_centroids):
     min_response = SIFT_PARAMS["min_response"]
     merge_distance = SIFT_PARAMS["merge_distance"]
 
-    # Convert base centroids to a nice list of float np.arrays
     final_centroids = []
     for c in base_centroids:
         final_centroids.append(np.array([float(c[0]), float(c[1])], dtype=np.float32))
@@ -79,13 +55,11 @@ def _add_sift_on_color_mask(image_bgr, color_mask, base_centroids):
         resp = kp.response
         x, y = kp.pt
 
-        # Basic SIFT filters
         if size < min_size or size > max_size:
             continue
         if resp < min_response:
             continue
 
-        # Must be in mask (should be, but double-check)
         ix, iy = int(round(x)), int(round(y))
         if iy < 0 or iy >= color_mask.shape[0] or ix < 0 or ix >= color_mask.shape[1]:
             continue
@@ -94,7 +68,6 @@ def _add_sift_on_color_mask(image_bgr, color_mask, base_centroids):
 
         kp_point = np.array([x, y], dtype=np.float32)
 
-        # Merge: skip if too close to any existing centroid
         too_close = False
         for c in final_centroids:
             if np.linalg.norm(kp_point - c) < merge_distance:
@@ -117,21 +90,11 @@ def process_cell_sift_hybrid(
     distance_threshold=100,
     tuning_params=None,
 ):
-    """
-    Advanced multi-stage pipeline + SIFT refinement.
-
-    Steps:
-    1. Use organ-specific HSV + distance transform + blob detection (advanced).
-    2. Run SIFT constrained to the color mask.
-    3. Add SIFT keypoints that are not near existing detections.
-    4. Evaluate combined centroids vs ground truth.
-    """
     results_dir = Path("results")
     results_dir.mkdir(exist_ok=True)
 
     image_path = Path(image_path)
 
-    # Load image (allow optional pre-loaded image for consistency)
     if image is None:
         image_bgr = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
     else:
@@ -144,7 +107,6 @@ def process_cell_sift_hybrid(
     organ = get_organ_from_metadata(image_path, data_root=data_root)
     params = ORGAN_PARAMS.get(organ, ORGAN_PARAMS["default"])
 
-    # Merge tuning params with defaults if provided
     if tuning_params is None:
         effective_tuning = DEFAULT_TUNING_PARAMS
     else:
@@ -153,22 +115,15 @@ def process_cell_sift_hybrid(
 
     print(f"Processing {image_path.name} (organ: {organ}) with Advanced+SIFT hybrid...")
 
-    # -------------------------------------------------------------------------
-    # 1) Run the advanced multi-stage detector
-    # -------------------------------------------------------------------------
     base_centroids, debug_images = detect_cells_multi_stage(
         image_bgr, params, tuning_params=effective_tuning
     )
 
-    # -------------------------------------------------------------------------
-    # 2) SIFT refinement on color mask
-    # -------------------------------------------------------------------------
     color_mask = debug_images["color_mask"]
     hybrid_centroids, sift_keypoints = _add_sift_on_color_mask(
         image_bgr, color_mask, base_centroids
     )
 
-    # Convert centroids to a simple list of (x, y) tuples for metrics
     detected_centroids = [(float(c[0]), float(c[1])) for c in hybrid_centroids]
 
     detected_count = len(detected_centroids)
@@ -176,9 +131,6 @@ def process_cell_sift_hybrid(
     extra_sift = detected_count - base_count
     actual_count = len(annotations)
 
-    # -------------------------------------------------------------------------
-    # 3) Metrics vs ground truth
-    # -------------------------------------------------------------------------
     metrics = calculate_detection_metrics(
         detected_centroids, annotations, distance_threshold=distance_threshold
     )
@@ -202,10 +154,6 @@ def process_cell_sift_hybrid(
 
     stem = image_path.stem
 
-    # -------------------------------------------------------------------------
-    # 4) Save debug images (reuse advanced debug + SIFT overlay)
-    # -------------------------------------------------------------------------
-    # Advanced diagnostics
     cv2.imwrite(
         str(results_dir / f"{stem}_cell_hybrid_1_color_mask.png"),
         debug_images["color_mask"],
@@ -223,7 +171,6 @@ def process_cell_sift_hybrid(
         debug_images["sure_fg"],
     )
 
-    # SIFT keypoints visualization
     gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
     kp_vis = cv2.drawKeypoints(
         gray,
@@ -236,7 +183,6 @@ def process_cell_sift_hybrid(
         kp_vis,
     )
 
-    # Final overlay: detections (green) + ground truth (red) + text
     overlay = image_bgr.copy()
 
     for c in detected_centroids:
@@ -281,15 +227,11 @@ def process_cell_sift_hybrid(
         overlay,
     )
 
-    # Original for reference
     cv2.imwrite(
         str(results_dir / f"{stem}_cell_hybrid_7_original.png"),
         image_bgr,
     )
 
-    # -------------------------------------------------------------------------
-    # 5) Return row for CSV aggregation
-    # -------------------------------------------------------------------------
     return {
         "image_name": image_path.name,
         "organ": organ,

@@ -26,10 +26,10 @@ def analyze_cell_colors(data_root='ocelot_testing_data', folder='train', max_ima
     })
 
     for img_path, ann_path in pairs:
-        
+
         img_id = img_path.stem
 
-        
+
         organ = None
         for key, value in metadata['sample_pairs'].items():
             if key == img_id:
@@ -39,16 +39,16 @@ def analyze_cell_colors(data_root='ocelot_testing_data', folder='train', max_ima
         if organ is None:
             continue
 
-        
+
         image_bgr = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
         image_hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
         annotations = pd.read_csv(ann_path, header=None, names=['x', 'y', 'class'])
 
-        
+
         for _, row in annotations.iterrows():
             x, y = int(row['x']), int(row['y'])
 
-            
+
             region_size = 5
             half = region_size // 2
 
@@ -58,7 +58,7 @@ def analyze_cell_colors(data_root='ocelot_testing_data', folder='train', max_ima
             region_bgr = image_bgr[y1:y2, x1:x2]
             region_hsv = image_hsv[y1:y2, x1:x2]
 
-            
+
             mean_bgr = region_bgr.mean(axis=(0, 1))
             mean_hsv = region_hsv.mean(axis=(0, 1))
             mean_intensity = cv2.cvtColor(region_bgr, cv2.COLOR_BGR2GRAY).mean()
@@ -73,7 +73,7 @@ def analyze_cell_colors(data_root='ocelot_testing_data', folder='train', max_ima
         if max_images and organ_stats[organ]['count'] >= max_images:
             break
 
-    
+
     print("\n" + "="*80)
     print("COLOR ANALYSIS BY ORGAN TYPE")
     print("="*80)
@@ -89,25 +89,25 @@ def analyze_cell_colors(data_root='ocelot_testing_data', folder='train', max_ima
         print(f"\n{organ.upper()} ({stats['count']} cells)")
         print("-" * 40)
 
-        
+
         mean_bgr = colors_bgr.mean(axis=0)
         std_bgr = colors_bgr.std(axis=0)
         print(f"  BGR Mean: B={mean_bgr[0]:.1f}, G={mean_bgr[1]:.1f}, R={mean_bgr[2]:.1f}")
         print(f"  BGR Std:  B={std_bgr[0]:.1f}, G={std_bgr[1]:.1f}, R={std_bgr[2]:.1f}")
 
-        
+
         mean_hsv = colors_hsv.mean(axis=0)
         std_hsv = colors_hsv.std(axis=0)
         print(f"  HSV Mean: H={mean_hsv[0]:.1f}, S={mean_hsv[1]:.1f}, V={mean_hsv[2]:.1f}")
         print(f"  HSV Std:  H={std_hsv[0]:.1f}, S={std_hsv[1]:.1f}, V={std_hsv[2]:.1f}")
 
-        
+
         mean_int = intensities.mean()
         std_int = intensities.std()
         print(f"  Intensity Mean: {mean_int:.1f}")
         print(f"  Intensity Std:  {std_int:.1f}")
 
-        
+
         print(f"\n  Recommended BGR range:")
         lower_bgr = np.clip(mean_bgr - 2*std_bgr, 0, 255).astype(int)
         upper_bgr = np.clip(mean_bgr + 2*std_bgr, 0, 255).astype(int)
