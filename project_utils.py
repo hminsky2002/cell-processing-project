@@ -252,7 +252,11 @@ def analyze_cell_results(csv_path: str):
     csv_filename = csv_path.split("/")[-1]
     method_name = csv_filename.replace("_comparison.csv", "")
 
-    stats_path = f'results/{csv_filename.split(".")[0]}_statistics.txt'
+    # Create method-specific stats folder
+    stats_dir = Path('results') / method_name / 'stats'
+    stats_dir.mkdir(parents=True, exist_ok=True)
+
+    stats_path = stats_dir / f'{csv_filename.split(".")[0]}_statistics.txt'
     with open(stats_path, 'w') as f:
         f.write("=" * 60 + "\n")
         f.write("DETECTION RESULTS ANALYSIS\n")
@@ -304,7 +308,9 @@ def analyze_cell_results(csv_path: str):
     # Generate accuracy mosaics if we have accuracy data
     if 'accuracy' in df.columns and len(df) >= 4:
         print(f"\nGenerating accuracy quartile mosaics for {method_name}...")
-        generate_accuracy_mosaics(df, method_name)
+        # Pass method-specific results directory for mosaics
+        method_results_dir = Path('results') / method_name
+        generate_accuracy_mosaics(df, method_name, results_dir=str(method_results_dir))
     elif 'accuracy' in df.columns:
         print(f"Skipping mosaic generation: need at least 4 images, got {len(df)}")
 
