@@ -2,8 +2,9 @@ import cv2
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from project_utils import calculate_detection_metrics
 
-def process_cell_binary(image_path, annotations: pd.DataFrame, image=None):
+def process_cell_binary(image_path, annotations: pd.DataFrame, image=None, distance_threshold=100):
     results_dir = Path('results')
     results_dir.mkdir(exist_ok=True)
 
@@ -51,7 +52,11 @@ def process_cell_binary(image_path, annotations: pd.DataFrame, image=None):
     detected_count = valid_label - 1
     actual_count = len(annotations)
 
+    metrics = calculate_detection_metrics(detected_centroids, annotations, distance_threshold)
+
     print(f"Image: {image_path.name}, Detected: {detected_count}, Actual: {actual_count}")
+    print(f"  TP: {metrics['true_positives']}, FP: {metrics['false_positives']}, FN: {metrics['false_negatives']}")
+    print(f"  Precision: {metrics['precision']:.3f}, Recall: {metrics['recall']:.3f}, F1: {metrics['f1_score']:.3f}, Accuracy: {metrics['accuracy']:.3f}")
 
     binary_vis = (binary_img * 255).astype('uint8')
     binary_path = results_dir / f"{image_path.stem}_cell_binary_1_threshold.png"
@@ -73,6 +78,11 @@ def process_cell_binary(image_path, annotations: pd.DataFrame, image=None):
             cx, cy = int(row['x']), int(row['y'])
             cv2.circle(overlay, (cx, cy), 6, (0, 0, 255), 2)
 
+    cv2.putText(overlay, f"Detected: {detected_count} | Actual: {actual_count}", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+    cv2.putText(overlay, f"P: {metrics['precision']:.2f} R: {metrics['recall']:.2f} F1: {metrics['f1_score']:.2f}", (10, 65),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+
     overlay_path = results_dir / f"{image_path.stem}_cell_binary_3_overlay.png"
     cv2.imwrite(str(overlay_path), overlay)
 
@@ -83,5 +93,6 @@ def process_cell_binary(image_path, annotations: pd.DataFrame, image=None):
         'image_name': image_path.name,
         'detected_components': detected_count,
         'actual_components': actual_count,
-        'difference': abs(detected_count - actual_count)
+        'difference': abs(detected_count - actual_count),
+        **metrics
     }

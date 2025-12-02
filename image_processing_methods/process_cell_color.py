@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import json
 from pathlib import Path
+from project_utils import calculate_detection_metrics
 
 
 ORGAN_COLOR_RANGES = {
@@ -64,7 +65,7 @@ def get_organ_from_metadata(image_path, data_root='ocelot_testing_data'):
     return 'default'
 
 
-def process_cell_color(image_path, annotations: pd.DataFrame, image=None, data_root='ocelot_testing_data'):
+def process_cell_color(image_path, annotations: pd.DataFrame, image=None, data_root='ocelot_testing_data', distance_threshold=100):
     results_dir = Path('results')
     results_dir.mkdir(exist_ok=True)
 
@@ -112,7 +113,11 @@ def process_cell_color(image_path, annotations: pd.DataFrame, image=None, data_r
     detected_count = valid_label - 1
     actual_count = len(annotations)
 
+    metrics = calculate_detection_metrics(detected_centroids, annotations, distance_threshold)
+
     print(f"  Organ: {organ}, Detected: {detected_count}, Actual: {actual_count}")
+    print(f"  TP: {metrics['true_positives']}, FP: {metrics['false_positives']}, FN: {metrics['false_negatives']}")
+    print(f"  Precision: {metrics['precision']:.3f}, Recall: {metrics['recall']:.3f}, F1: {metrics['f1_score']:.3f}, Accuracy: {metrics['accuracy']:.3f}")
 
     mask_path = results_dir / f"{Path(image_path).stem}_cell_color_1_mask.png"
     cv2.imwrite(str(mask_path), color_mask)
@@ -136,6 +141,8 @@ def process_cell_color(image_path, annotations: pd.DataFrame, image=None, data_r
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     cv2.putText(overlay, f"Detected: {detected_count} | Actual: {actual_count}", (10, 70),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    cv2.putText(overlay, f"P: {metrics['precision']:.2f} R: {metrics['recall']:.2f} F1: {metrics['f1_score']:.2f}", (10, 110),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
 
     overlay_path = results_dir / f"{Path(image_path).stem}_cell_color_3_overlay.png"
     cv2.imwrite(str(overlay_path), overlay)
@@ -148,5 +155,6 @@ def process_cell_color(image_path, annotations: pd.DataFrame, image=None, data_r
         'organ': organ,
         'detected_components': detected_count,
         'actual_components': actual_count,
-        'difference': abs(detected_count - actual_count)
+        'difference': abs(detected_count - actual_count),
+        **metrics
     }
