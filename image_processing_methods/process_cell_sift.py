@@ -7,8 +7,8 @@ from project_utils import calculate_detection_metrics
 
 
 SIFT_PARAMS = {
-    "min_size": 6.0,
-    "max_size": 40.0,
+    "min_size": 20.0,
+    "max_size": 30.0,
     "min_response": 0.02,
     "contrastThreshold": 0.01,
     "edgeThreshold": 10,
