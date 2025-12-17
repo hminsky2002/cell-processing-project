@@ -1,0 +1,162 @@
+    Publications
+
+OCELOT Dataset
+
+Download Link
+
+The dataset is available on Zenodo! Before downloading the dataset, please make sure to carefully read and agree to the Terms and Conditions.
+Introduction
+
+The OCELOT dataset is a histopathology dataset designed to facilitate the development of methods that utilize cell and tissue relationships. The dataset comprises both small and large field-of-view (FoV) patches extracted from digitally scanned whole slide images (WSIs), with overlapping regions. The small and large FoV patches are accompanied by annotations of cells and tissues, respectively. The WSIs are sourced from the publicly available TCGA database and were stained using the H&E method before being scanned with an Aperio scanner.
+
+Each sample of the OCELOT dataset is composed of six components,
+where are the small and large FoV patches extracted from the WSI,
+refer to the corresponding cell and tissue annotations, respectively, and are the relative coordinates of the center of within
+
+. The below figure shows the visualization of a sample.
+A sample from the OCELOT dataset. Each sample of the dataset consists of two input patches and the corresponding annotations. Left shows the large FoV patch
+with tissue segmentation annotation
+, where green denotes the cancer area. Right shows the small FoV patch with cell point annotation
+, where blue and yellow dots denote tumor and background cells, respectively. The red box indicates the size and location of the with respect to the
+.
+Dataset Details
+
+We collect 304 Whole Slide Images (WSIs) obtained from the publicly available TCGA database1. Then, the dataset is divided into three subsets: training, validation, and test, following a 6:2:2 ratio. To prevent information leaking among the data subsets, we randomly split the dataset per WSI, so that different patches from the same WSI are not included in different splits. We maintain consistent cancer-type ratios in each subset.
+File Structure
+Path	Description
+
+images/{train,val,test}/{cell,tissue}/{uuid:03d}.jpg
+
+	Cell/tissue patch of size 1024x1024
+
+annotations/{train,val,test}/cell/{uuid:03d}.csv
+
+	Cell annotations of format x,y,label in each line
+
+annotations/{train,val,test}/tissue/{uuid:03d}.png
+
+	Tissue annotations
+
+metadata.json
+
+	Metadata of every data (agnostic to split)
+
+Note. the validation and test splits will be released after August 11, 2023.
+Metadata
+
+The metadata of each sample is stored in a JSON file (metadata.json), which contains the following information:
+Field Name	Description
+
+slide_name
+
+	TCGA Slide name. To obtain additional information about the slide or case, you can query https://portal.gdc.cancer.gov/ with this slide name.
+
+patch_x_offset
+
+	x-coordinate representing the relative center location of the cell patch within the tissue patch
+
+patch_y_offset
+
+	y-coordinate representing the relative center location of the cell patch within the tissue patch
+
+mpp_x
+
+	Micron-Per-Pixel (MPP) value of the slide, along the x-axis.
+
+mpp_y
+
+	Micron-Per-Pixel (MPP) value of the slide, along the y-axis.
+
+organ
+
+	The organ where the sample was taken from.
+
+subset
+
+	Partition of the dataset, i.e. train, val or test
+
+x_start
+
+	x-coordinate representing the start of the coordinate range that specifies the cell or tissue patch within the Whole-Slide-Image (WSI). Specifically, the patch is extracted from the pixels between x_start (inclusive) and x_end (exclusive) within the WSI. The top-left corner pixel is assigned the coordinates (0,0).
+
+y_start
+
+	y-coordinate representing the start of the coordinate range that specifies the cell or tissue patch within the Whole-Slide-Image (WSI). Specifically, the patch is extracted from the pixels between x_start (inclusive) and x_end (exclusive) within the WSI. The top-left corner pixel is assigned the coordinates (0,0).
+
+x_end
+
+	x-coordinate representing the end of the coordinate range that specifies the cell or tissue patch within the Whole-Slide-Image (WSI). Specifically, the patch is extracted from the pixels between x_start (inclusive) and x_end (exclusive) within the WSI. The top-left corner pixel is assigned the coordinates (0,0).
+
+y_end
+
+	y-coordinate representing the end of the coordinate range that specifies the cell or tissue patch within the Whole-Slide-Image (WSI). Specifically, the patch is extracted from the pixels between x_start (inclusive) and x_end (exclusive) within the WSI. The top-left corner pixel is assigned the coordinates (0,0).
+
+resized_mpp_x
+
+	Micron-Per-Pixel (MPP) value of the resized patch, along the x-axis.
+
+resized_mpp_y
+
+	Micron-Per-Pixel (MPP) value of the resized patch, along the y-axis.
+
+We also provide a script to parse the metadata into python class. You can find the script in utils/metadata.py.
+Statistics
+Annotation
+Labels	# Cells
+Train	Val	Test
+BC (Background Cell)	23.3K	8.4K	9.7K
+TC (Tumor Cell)	42.5K	16.3K	12.9K
+Total	65.8K	24.7K	22.5K
+Cell label count
+Labels	# Pixels
+Train	Val	Test
+BG (Background)	235.4M	79.1M	71.6M
+CA (Cancer Area)	166.6M	57.8M	58.6M
+UNK (Unknown)	17.4M	6.8M	6.1M
+Total	419.4M	143.7M	136.3M
+Tissue label count
+Dataset size per organ and data subset
+Organs	# Slides		# Patch Pairs
+Train	Val	Test		Train	Val	Test
+Bladder	35	14	14		82	29	26
+Endometrium	38	13	13		86	29	25
+Head-and-neck	13	5	6		27	9	10
+Kidney	47	15	18		122	41	41
+Prostate	25	12	10		47	17	16
+Stomach	15	6	5		36	12	12
+Total	173	65	66		400	137	130
+Dataset size per organ and data subset
+Sources of error
+
+The extraction and processing of the specimens is a complex procedure depending on multiple factors that can cause various artifacts. As a result, the annotation of cells and tissue patches can be non-trivial for specific samples. Furthermore, pathologists show high intra- and inter-rater variability when assessing the different tissues and cells; i.e., there is a considerable amount of subjectivity. Both issues potentially lead to high annotation-wise discrepancies across pathologists. Especially for the cell patches, we adopt the 2+1 annotation strategy in order to reduce annotation variability.
+Data Collection
+
+We collect 304 Whole Slide Images (WSIs) obtained from the publicly available TCGA database1. We provide the list of case IDs required to query further patient data that is available via the NCI GDC Database2. These WSIs are gathered from 6 different organs: bladder, endometrium, head-and-neck, kidney, prostate, and stomach. From each WSI, two types of patches (image regions) are extracted at a resolution of approximately ~0.2 micronper-pixel, as follows:
+
+    Tissue patch (large FoV): Inside each WSI, 1~3 patches with size 4096x4096 pixels were selected. The annotations consist of pixel-wise tissue categories: Background (BG), Cancer Area (CA), and Unknown (UNK).
+    Cell patch (small FoV): Inside each tissue patch (as defined above), a 1024x1024 pixel region is randomly selected. Cells are annotated with the location and category into two categories: Background cell (BC), and Tumor Cell (TC).
+
+In total, we acquire a total of 667 cell and tissue patch pairs with the corresponding annotations.
+Patch Configuration
+
+Cell detection tasks benefit from fine-grained spatial information to better capture detailed cell properties (e.g. border, shape, color, and opacity). In contrast, tissue segmentation requires a larger context to enable a better understanding of the overall structural information. Therefore, we define the FoV sizes of
+(cell detection) and (tissue segmentation) as 1024×1024 and 4096×4096 pixels, respectively, at a resolution of 0.2 Microns-per-Pixel (MPP). Finally, the large FoV patches and tissue annotations (,
+
+) are down-sampled by a factor of 4, resulting in a size of 1024×1024 pixels.
+Annotation procedure
+
+All cell-tissue pairs of patches are annotated by board-certified pathologists. A total of 67 certified pathologists conducted the manual annotations as follows:
+cell annotations
+
+Pathologists pinpoint the center position of each cell and assign the corresponding cell category. Annotations consider two categories of cells: Tumor Cell (TC) and Background Cell (BC). Background cells include all other cells in the patch that are not TCs.
+tissue annotations
+
+Pathologists annotated pixel-wise tissue categories by marking cancer and non-cancer regions in the tissue patch. Finally, the patch is reviewed and submitted. Three categories are considered: Cancer Area (CA), Background (BG), and Unknown (Unk). The Unknown class corresponds to uncertain annotated pixels that can be excluded during training and evaluation.
+startegy
+
+Each tissue patch is annotated by a single board-certified pathologist while for the cell patches we adopt a 2+1 annotation strategy with a final validation step. We find that the cell annotations require a more rigorous annotation procedure due to the higher intra- and inter-rater variability. First, 2 independent expert pathologists annotate the same patch. Afterward, both annotations are passed to the third annotator. The task of the third annotator is to merge both annotations. Finally, a fourth annotator validates the merged annotation to finally ensure the quality of the annotation and samples.
+References
+
+    [1] Carolyn Hutter and Jean Claude Zenklusen. “The cancer genome atlas: creating lasting value beyond its data.” Cell, 173(2):283–285, 2018.
+    [2]. https://portal.gdc.cancer.gov/
+

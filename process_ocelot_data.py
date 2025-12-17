@@ -64,21 +64,28 @@ class OcelotDataProcessor:
             if processing_method not in PROCESSING_METHODS:
                 raise ValueError(f"Unknown processing method: {processing_method}")
             processing_func = PROCESSING_METHODS[processing_method]
-            
+
         results_list = []
         for image_path, annotation_path in pairs:
             annotations = self.load_annotations(annotation_path, data_type)
-            
+
             if processing_func:
-                
-                result = processing_func(image_path, annotations)
-                
+                if processing_method == 'cell_advanced_cnn':
+                    result = processing_func(
+                        image_path,
+                        annotations,
+                        cnn_model_path='minimal_cell_cnn.pt'
+                    )
+                else:
+                    result = processing_func(image_path, annotations)
+
                 if result:
                     results_list.append(result)
 
-        if processing_method == 'cell_binary' and results_list:
-            output_path = save_cell_results(results_list)
-            analyze_cell_results(output_path)   
+        if processing_method and results_list and data_type == 'cell':
+            output_file = f'results/{processing_method}_comparison.csv'
+            output_path = save_cell_results(results_list, output_path=output_file)
+            analyze_cell_results(output_path)
 
 def main():
     if len(sys.argv) < 3:
